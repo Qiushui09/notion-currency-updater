@@ -2,8 +2,18 @@ import requests
 import os
 from datetime import datetime
 
-NOTION_TOKEN = os.getenv('NOTION_TOKEN')
-DATABASE_ID = os.getenv('DATABASE_ID')
+def load_config():
+    config = {}
+    with open('config.txt', 'r') as f:
+        for line in f:
+            key, value = line.strip().split('=')
+            config[key] = value
+    return config
+
+# 加载配置
+config = load_config()
+NOTION_TOKEN = config['NOTION_TOKEN']
+DATABASE_ID = config['DATABASE_ID']
 
 headers = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
@@ -34,14 +44,6 @@ def update_notion_rate(currency_pair, currency_code, rate, is_success=True):
     """更新或创建Notion数据库中的汇率记录"""
     
     print(f"处理货币对: {currency_pair}, 汇率: {rate}")
-    
-    # 检查环境变量
-    if not NOTION_TOKEN:
-        print("❌ NOTION_TOKEN 未设置")
-        return False
-    if not DATABASE_ID:
-        print("❌ DATABASE_ID 未设置")
-        return False
     
     # 查询是否存在该货币对
     query_url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
@@ -94,19 +96,6 @@ def update_notion_rate(currency_pair, currency_code, rate, is_success=True):
             
     except Exception as e:
         print(f"更新异常 {currency_pair}: {e}")
-        # 尝试标记为失败状态
-        try:
-            if 'results' in locals() and results:
-                error_data = {
-                    "properties": {
-                        "状态": {"select": {"name": "更新失败"}}
-                    }
-                }
-                page_id = results[0]['id']
-                url = f"https://api.notion.com/v1/pages/{page_id}"
-                requests.patch(url, headers=headers, json=error_data)
-        except:
-            pass
         return False
 
 def main():
@@ -116,9 +105,6 @@ def main():
     print(f"执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
     
-    print(f"NOTION_TOKEN 存在: {'是' if NOTION_TOKEN else '否'}")
-    print(f"DATABASE_ID: {DATABASE_ID}")
-    
     # 获取汇率数据
     rates = get_exchange_rates()
     if not rates:
@@ -126,7 +112,6 @@ def main():
         return
     
     print(f"✅ 成功获取汇率数据")
-    print(f"可用货币: {list(rates.keys())[:10]}..." if len(rates) > 10 else f"可用货币: {list(rates.keys())}")
     
     # 定义需要更新的货币对
     currency_mappings = {
@@ -150,7 +135,6 @@ def main():
         
         if currency_code in rates:
             if rates[currency_code] != 0:
-                # 计算该货币对CNY的汇率（取倒数）
                 try:
                     rate = round(1 / rates[currency_code], 4)
                     
@@ -159,18 +143,13 @@ def main():
                         success_count += 1
                     else:
                         print(f"❌ {currency_pair}: 更新失败")
-                        # 尝试标记失败状态
-                        update_notion_rate(currency_pair, currency_code, None, False)
                         
                 except Exception as e:
                     print(f"❌ {currency_pair}: 计算汇率失败 - {e}")
-                    update_notion_rate(currency_pair, currency_code, None, False)
             else:
                 print(f"❌ {currency_pair}: API返回汇率为0")
-                update_notion_rate(currency_pair, currency_code, None, False)
         else:
             print(f"❌ {currency_pair}: API未返回此货币数据")
-            update_notion_rate(currency_pair, currency_code, None, False)
     
     # 输出汇总结果
     print("\n" + "=" * 50)
