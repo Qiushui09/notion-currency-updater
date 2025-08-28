@@ -1,0 +1,29 @@
+name: Update Exchange Rates
+
+on:
+  schedule:
+    - cron: '30 1 * * *'  # 每天上午9:30 (UTC+8)
+  workflow_dispatch:      # 支持手动触发
+
+jobs:
+  update-rates:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        pip install requests
+        
+    - name: Update exchange rates
+      env:
+        NOTION_TOKEN: $ secrets.NOTION_TOKEN 
+        DATABASE_ID: $ secrets.DATABASE_ID 
+      run: python update_rates.py
