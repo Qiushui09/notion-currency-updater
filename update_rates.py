@@ -2,9 +2,9 @@ import requests
 import os
 from datetime import datetime
 
-# Notion API 配置
-NOTION_TOKEN = os.getenv('NOTION_TOKEN')
-DATABASE_ID = os.getenv('DATABASE_ID')
+# 直接设置值进行测试
+NOTION_TOKEN = "ntn_s64810078624fjF7mv5mOlh3buC6nJjp84yvEUDXUKqeM4"
+DATABASE_ID = "bd4edbeead964eb58540ed3970961faa"
 
 headers = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
